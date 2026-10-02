@@ -2,4 +2,14 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-createRoot(document.getElementById('root')!).render(<App />);
+const rootElement = document.getElementById('root');
+
+if (!rootElement) {
+  const fallback = document.createElement('div');
+  fallback.id = 'root';
+  document.body.appendChild(fallback);
+  createRoot(fallback).render(<App />);
+} else {
+  createRoot(rootElement).render(<App />);
+}
+

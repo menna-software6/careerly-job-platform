@@ -111,10 +111,80 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return [];
   });
 
-  const [activePage, setActivePage] = useState<ActivePage>('home');
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  // Parse initial route from URL hash or query parameters to support direct navigation & refreshes
+  const parseLocationState = (): { page: ActivePage; jobId: string | null } => {
+    try {
+      if (typeof window === 'undefined') return { page: 'home', jobId: null };
+      const hash = window.location.hash.replace(/^#\/?/, '');
+      const [routePart, queryPart] = hash.split('?');
+      const validPages: ActivePage[] = ['home', 'jobs', 'job-details', 'saved', 'tracker', 'profile', 'employer'];
+
+      let page: ActivePage = 'home';
+      let jobId: string | null = null;
+
+      if (validPages.includes(routePart as ActivePage)) {
+        page = routePart as ActivePage;
+      }
+
+      if (queryPart) {
+        const params = new URLSearchParams(queryPart);
+        jobId = params.get('id');
+      }
+
+      if (page === 'home' && window.location.search) {
+        const searchParams = new URLSearchParams(window.location.search);
+        const pageParam = searchParams.get('page');
+        if (pageParam && validPages.includes(pageParam as ActivePage)) {
+          page = pageParam as ActivePage;
+        }
+        if (searchParams.get('id')) {
+          jobId = searchParams.get('id');
+        }
+      }
+
+      return { page, jobId };
+    } catch {
+      return { page: 'home', jobId: null };
+    }
+  };
+
+  const initialLoc = parseLocationState();
+  const [activePage, _setActivePage] = useState<ActivePage>(initialLoc.page);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(initialLoc.jobId);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  // Synchronize browser history and hash on hashchange / popstate
+  useEffect(() => {
+    const handleHashChange = () => {
+      const { page, jobId } = parseLocationState();
+      _setActivePage(page);
+      if (jobId) {
+        setSelectedJobId(jobId);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', handleHashChange);
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('popstate', handleHashChange);
+    };
+  }, []);
+
+  const setActivePage = (page: ActivePage) => {
+    _setActivePage(page);
+    try {
+      const targetHash = page === 'job-details' && selectedJobId
+        ? `#/job-details?id=${selectedJobId}`
+        : `#/${page}`;
+      if (window.location.hash !== targetHash) {
+        window.history.pushState(null, '', targetHash);
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   // Combined jobs list: custom posted jobs at the top, then base jobs
   const jobs: Job[] = [...customJobs, ...INITIAL_JOBS];
@@ -185,7 +255,12 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const exists = jobs.some((j) => j.id === jobId);
     if (exists) {
       setSelectedJobId(jobId);
-      setActivePage('job-details');
+      _setActivePage('job-details');
+      try {
+        window.history.pushState(null, '', `#/job-details?id=${jobId}`);
+      } catch {
+        // ignore
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       showToast('Selected job listing is no longer available', 'error');

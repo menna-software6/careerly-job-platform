@@ -3,12 +3,17 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
 
-export default defineConfig(() => {
+export default defineConfig(({ command }) => {
+  // Use repository base path for production build on GitHub Pages (/careerly-job-platform/)
+  // while preserving '/' for local development
+  const base = process.env.VITE_BASE_PATH || (command === 'build' ? '/careerly-job-platform/' : '/');
+
   return {
+    base,
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname || '.'),
       },
     },
     server: {
