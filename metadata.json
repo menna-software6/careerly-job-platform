@@ -1,0 +1,6 @@
+{
+  "name": "CAREERLY",
+  "description": "Modern Editorial Job Search & Career Platform for high-calibre software engineering and technology talent",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
